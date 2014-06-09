@@ -32,7 +32,7 @@
 #if ! defined(COCOAPODS) && ! defined(OHATTRIBUTEDLABEL_DEDICATED_PROJECT)
 // Copying files in your project and thus compiling OHAttributedLabel under different build settings
 // than the one provided is not recommended and increase risks of leaks (mixing ARC vs. MRC) or unwanted behaviors
-#warning [OHAttributedLabel integration] You should include OHAttributedLabel project in your workspace instead of copying the files in your own app project. Or better, use CocoaPods to integrate your 3rd party libs. See README for instructions.
+//#warning [OHAttributedLabel integration] You should include OHAttributedLabel project in your workspace instead of copying the files in your own app project. Or better, use CocoaPods to integrate your 3rd party libs. See README for instructions.
 #endif
 
 NSString* kOHLinkAttributeName = @"NSLinkAttributeName"; // Use the same value as OSX, to be compatible in case Apple port this to iOS one day too
@@ -332,10 +332,60 @@ static NSString* const kHelveticaNeueUI_Bold_Italic = @".HelveticaNeueUI-BoldIta
      }];
 }
 
--(void)setTextAlignment:(CTTextAlignment)alignment lineBreakMode:(CTLineBreakMode)lineBreakMode
-{
-	[self setTextAlignment:alignment lineBreakMode:lineBreakMode range:NSMakeRange(0,[self length])];
+-(void)setTextAlignment:(CTTextAlignment)alignment lineBreakMode:(CTLineBreakMode)lineBreakMode {
+    [self setTextAlignment:alignment
+             lineBreakMode:lineBreakMode
+             maxLineHeight:14.0f
+             minLineHeight:14.0f
+            maxLineSpacing:2.0f
+            minLineSpacing:2.0f
+                     range:NSMakeRange(0,[self length])];
 }
+
+-(void)setTextAlignment:(CTTextAlignment)alignment
+          lineBreakMode:(CTLineBreakMode)lineBreakMode
+          maxLineHeight:(CGFloat)maxLineHeight
+          minLineHeight:(CGFloat)minLineHeight
+         maxLineSpacing:(CGFloat)maxLineSpacing
+         minLineSpacing:(CGFloat)minLineSpacing
+                  range:(NSRange)range {
+    
+    CTParagraphStyleSetting paraStyles[6];
+    
+    paraStyles[0].spec = kCTParagraphStyleSpecifierMaximumLineHeight;
+    paraStyles[0].valueSize = sizeof(CGFloat);
+    paraStyles[0].value = &maxLineHeight;
+    
+    paraStyles[1].spec = kCTParagraphStyleSpecifierMinimumLineHeight;
+    paraStyles[1].valueSize = sizeof(CGFloat);
+    paraStyles[1].value = &minLineHeight;
+    
+    paraStyles[2].spec = kCTParagraphStyleSpecifierMaximumLineSpacing;
+    paraStyles[2].valueSize = sizeof(CGFloat);
+    paraStyles[2].value = &maxLineSpacing;
+    
+    paraStyles[3].spec = kCTParagraphStyleSpecifierMinimumLineSpacing;
+    paraStyles[3].valueSize = sizeof(CGFloat);
+    paraStyles[3].value = &minLineSpacing;
+    
+    paraStyles[4].spec = kCTParagraphStyleSpecifierAlignment;
+    paraStyles[4].valueSize = sizeof(CTTextAlignment);
+    paraStyles[4].value = (const void*)&alignment;
+    
+    paraStyles[5].spec = kCTParagraphStyleSpecifierLineBreakMode;
+    paraStyles[5].valueSize = sizeof(CTLineBreakMode);
+    paraStyles[5].value = (const void*)&lineBreakMode;
+    
+    CTParagraphStyleRef aStyle = CTParagraphStyleCreate(paraStyles, 6);
+    [self removeAttribute:(NSString*)kCTParagraphStyleAttributeName range:range]; // Work around for Apple leak
+    [self addAttribute:(NSString*)kCTParagraphStyleAttributeName value:(__bridge id)aStyle range:range];
+    CFRelease(aStyle);
+}
+
+//-(void)setTextAlignment:(CTTextAlignment)alignment lineBreakMode:(CTLineBreakMode)lineBreakMode
+//{
+//	[self setTextAlignment:alignment lineBreakMode:lineBreakMode range:NSMakeRange(0,[self length])];
+//}
 -(void)setTextAlignment:(CTTextAlignment)alignment lineBreakMode:(CTLineBreakMode)lineBreakMode range:(NSRange)range
 {
     [self modifyParagraphStylesInRange:range withBlock:^(OHParagraphStyle *paragraphStyle) {
